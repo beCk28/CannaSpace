@@ -10,7 +10,7 @@ import base64
 app = Flask(__name__)
 
 # SQLite databáze na ploše
-DB_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "vernost.db")
+DB_PATH = "vernost.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 Session = sessionmaker(bind=engine)
 session = Session()
