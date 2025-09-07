@@ -55,19 +55,19 @@ TEMPLATE = """
     <meta charset="UTF-8">
     <title>Věrnostní program - Administrace</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
+        body { font-family: Arial, sans-serif; background-color: #f0e6ff; color: #333; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #5cb85c; }
+        h1 { color: #6a0dad; }
         h2 { border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
-        th { background-color: #5cb85c; color: white; }
+        th { background-color: #9370db; color: white; }
         form { margin-top: 20px; }
         input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select {
             width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
         }
         input[type="submit"] {
-            background-color: #5cb85c; color: white; padding: 14px 20px; margin: 8px 0; border: none;
+            background-color: #6a0dad; color: white; padding: 14px 20px; margin: 8px 0; border: none;
             border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px;
         }
         .blinking {
@@ -76,7 +76,7 @@ TEMPLATE = """
         @keyframes blinker {
             50% { opacity: 0; }
         }
-        a { color: #5cb85c; text-decoration: none; }
+        a { color: #6a0dad; text-decoration: none; }
         a:hover { text-decoration: underline; }
     </style>
 </head>
@@ -146,16 +146,16 @@ DETAIL_TEMPLATE = """
     <meta charset="UTF-8">
     <title>Detail zákazníka</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
+        body { font-family: Arial, sans-serif; background-color: #f0e6ff; color: #333; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #5cb85c; }
+        h1 { color: #6a0dad; }
         h2 { border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         ul { list-style-type: none; padding: 0; }
         li { padding: 8px 0; border-bottom: 1px solid #eee; }
         form { margin-top: 20px; }
         input[type="number"] { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        input[type="submit"] { background-color: #5cb85c; color: white; padding: 14px 20px; margin: 8px 0; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
-        a { color: #5cb85c; text-decoration: none; }
+        input[type="submit"] { background-color: #6a0dad; color: white; padding: 14px 20px; margin: 8px 0; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        a { color: #6a0dad; text-decoration: none; }
         a:hover { text-decoration: underline; }
     </style>
 </head>
