@@ -213,6 +213,14 @@ a { text-decoration:none; color:#6c4298; }
 </section>
 
 <section>
+<h2>Přidat bonusovou odměnu</h2>
+<form method="post" action="/add_bonus_odmena/{{ zakaznik.id }}">
+<input type="number" name="bonus_castka" placeholder="Částka bonusu (Kč)" step="0.01" required>
+<button type="submit">Přidat bonus</button>
+</form>
+</section>
+
+<section>
 <h2>Historie nákupů</h2>
 <table>
 <tr><th>#</th><th>Částka</th><th>Odměna</th><th>Datum</th><th>Akce</th></tr>
@@ -470,6 +478,26 @@ def add_nakup(id):
     n = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena - vyuzita_odmena) # Ukládáme čistý zisk/ztrátu odměny
     session.add(n)
     session.commit()
+    return redirect(f"/detail/{id}")
+
+@app.route("/add_bonus_odmena/<int:id>", methods=["POST"])
+def add_bonus_odmena(id):
+    """Přidá bonusovou odměnu zákazníkovi a uloží záznam o transakci."""
+    session = get_db_session()
+    zakaznik = session.query(Zakaznik).get(id)
+    # Získání bonusové částky z formuláře
+    bonus_castka = float(request.form['bonus_castka'])
+    
+    # Přidání bonusové odměny k celkové nasbírané odměně
+    zakaznik.nasbirana_odmena += bonus_castka
+    
+    # Vytvoření záznamu o nákupu pro bonus, s částkou 0
+    # To pomáhá udržet historii transakcí
+    n = Nakup(zakaznik=zakaznik, castka=0.0, odmena=bonus_castka)
+    session.add(n)
+    session.commit()
+    
+    # Přesměrování zpět na detail zákazníka
     return redirect(f"/detail/{id}")
 
 @app.route("/edit/<int:id>", methods=["GET"])
