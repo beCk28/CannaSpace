@@ -9,8 +9,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
 app = Flask(__name__)
 
-# SQLite databáze na ploše
-DB_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "vernost.db")
+# Určíme cestu k databázovému souboru ve stejné složce jako skript
+basedir = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(basedir, "vernost.db")
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 Base = declarative_base()
 
@@ -544,3 +545,4 @@ def register_customer():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
