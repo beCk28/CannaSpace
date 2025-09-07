@@ -1,20 +1,21 @@
-from flask import Flask, request, render_template_string, redirect
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
-from datetime import datetime
 import os
 import qrcode
 from io import BytesIO
 import base64
+from datetime import datetime
+from flask import Flask, request, render_template_string, redirect, g
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
 app = Flask(__name__)
 
 # SQLite databáze na ploše
 DB_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "vernost.db")
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
-Session = sessionmaker(bind=engine)
-session = Session()
 Base = declarative_base()
+
+# Konfigurace relace (session)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # --------- Tabulka zákazníků ---------
 class Zakaznik(Base):
@@ -41,6 +42,20 @@ class Nakup(Base):
     zakaznik = relationship("Zakaznik", back_populates="nakupy")
 
 Base.metadata.create_all(engine)
+
+# --------- Správa relací pro každý požadavek ---------
+def get_db_session():
+    """Získá databázovou relaci pro aktuální požadavek."""
+    if 'db' not in g:
+        g.db = SessionLocal()
+    return g.db
+
+@app.teardown_appcontext
+def close_db_session(exception):
+    """Automaticky uzavře databázovou relaci po každém požadavku."""
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 # --------- HTML šablony pro interní rozhraní ---------
 TEMPLATE = """
@@ -391,6 +406,7 @@ QR_PAGE_TEMPLATE = """
 # --------- ROUTES ---------
 @app.route("/")
 def index():
+    session = get_db_session()
     zakaznici = session.query(Zakaznik).all()
     for z in zakaznici:
         z.nasbirana_odmena = sum(n.odmena for n in z.nakupy)
@@ -398,6 +414,7 @@ def index():
 
 @app.route("/add", methods=["POST"])
 def add():
+    session = get_db_session()
     z = Zakaznik(
         jmeno=request.form['jmeno'],
         prijmeni=request.form['prijmeni'],
@@ -412,6 +429,7 @@ def add():
 
 @app.route("/delete/<int:id>", methods=["POST"])
 def delete(id):
+    session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     if zakaznik:
         session.delete(zakaznik)
@@ -420,12 +438,14 @@ def delete(id):
 
 @app.route("/detail/<int:id>")
 def detail(id):
+    session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     zakaznik.nasbirana_odmena = sum(n.odmena for n in zakaznik.nakupy)
     return render_template_string(DETAIL_TEMPLATE, zakaznik=zakaznik)
 
 @app.route("/add_nakup/<int:id>", methods=["POST"])
 def add_nakup(id):
+    session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     castka = float(request.form['castka'])
     odmena = castka * zakaznik.hodnota_odmeny / 100
@@ -437,11 +457,13 @@ def add_nakup(id):
 
 @app.route("/edit/<int:id>", methods=["GET"])
 def edit_customer(id):
+    session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     return render_template_string(EDIT_TEMPLATE, zakaznik=zakaznik)
 
 @app.route("/update/<int:id>", methods=["POST"])
 def update_customer(id):
+    session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     if zakaznik:
         zakaznik.jmeno = request.form['jmeno']
@@ -453,11 +475,13 @@ def update_customer(id):
 
 @app.route("/edit_castka/<int:nakup_id>", methods=["GET"])
 def edit_castka(nakup_id):
+    session = get_db_session()
     nakup = session.query(Nakup).get(nakup_id)
     return render_template_string(EDIT_CASTKA_TEMPLATE, nakup=nakup)
 
 @app.route("/update_castka/<int:nakup_id>", methods=["POST"])
 def update_castka(nakup_id):
+    session = get_db_session()
     nakup = session.query(Nakup).get(nakup_id)
     stara_castka = nakup.castka
     nova_castka = float(request.form['castka'])
@@ -473,6 +497,7 @@ def update_castka(nakup_id):
 
 @app.route("/delete_odmena/<int:nakup_id>", methods=["POST"])
 def delete_odmena(nakup_id):
+    session = get_db_session()
     nakup = session.query(Nakup).get(nakup_id)
     if nakup.odmena > 0:
         nakup.odmena = 0.0
@@ -501,6 +526,7 @@ def show_qrcode():
 
 @app.route("/register", methods=["GET", "POST"])
 def register_customer():
+    session = get_db_session()
     if request.method == "POST":
         z = Zakaznik(
             jmeno=request.form['jmeno'],
