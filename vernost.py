@@ -82,6 +82,7 @@ input, select { padding:8px; margin-right:6px; border-radius:6px; border:1px sol
 button { padding:8px 12px; border:none; border-radius:66px; background:#6c4298; color:white; cursor:pointer; transition:0.2s; }
 button:hover { background:#5a3780; }
 a { text-decoration:none; color:#6c4298; }
+.qr-button { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -105,6 +106,7 @@ a { text-decoration:none; color:#6c4298; }
 <input type="number" name="hodnota_odmeny" placeholder="Hodnota %" step="0.1" required>
 <button type="submit">Přidat</button>
 </form>
+<a href="/qrcode"><button class="qr-button">Zobrazit QR kód pro registraci</button></a>
 </section>
 
 <section>
@@ -205,6 +207,7 @@ a { text-decoration:none; color:#6c4298; }
 <h2>Přidat nákup</h2>
 <form method="post" action="/add_nakup/{{ zakaznik.id }}">
 <input type="number" name="castka" placeholder="Částka nákupu" step="0.01" required>
+<input type="number" name="vyuzita_odmena" placeholder="Použitá odměna (Kč)" step="0.01">
 <button type="submit">Přidat nákup</button>
 </form>
 </section>
@@ -449,9 +452,22 @@ def add_nakup(id):
     session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     castka = float(request.form['castka'])
-    odmena = castka * zakaznik.hodnota_odmeny / 100
-    zakaznik.celkove_utraceno += castka
-    n = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena)
+    vyuzita_odmena = float(request.form.get('vyuzita_odmena', 0))
+
+    # Odečteme použitou odměnu z celkové nasbírané odměny
+    if vyuzita_odmena > 0 and vyuzita_odmena <= zakaznik.nasbirana_odmena:
+        zakaznik.nasbirana_odmena -= vyuzita_odmena
+    
+    # Vypočítáme novou odměnu na základě nákupu (pokud to není cashback)
+    odmena = 0
+    if zakaznik.typ_odmeny == 'Cashback':
+        odmena = castka * zakaznik.hodnota_odmeny / 100
+        zakaznik.celkove_utraceno += castka
+    
+    # Přičteme nově získanou odměnu k nasbírané
+    zakaznik.nasbirana_odmena += odmena
+
+    n = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena - vyuzita_odmena) # Ukládáme čistý zisk/ztrátu odměny
     session.add(n)
     session.commit()
     return redirect(f"/detail/{id}")
