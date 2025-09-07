@@ -4,7 +4,7 @@ from io import BytesIO
 import base64
 from datetime import datetime
 from flask import Flask, request, render_template_string, redirect, g
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, or_
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
 app = Flask(__name__)
@@ -30,6 +30,7 @@ class Zakaznik(Base):
     hodnota_odmeny = Column(Float)
     celkove_utraceno = Column(Float, default=0.0)
     datum_pridani = Column(DateTime, default=datetime.now)
+    nasbirana_odmena = Column(Float, default=0.0)  # Nové pole pro sledování odměn
     nakupy = relationship("Nakup", back_populates="zakaznik", cascade="all, delete-orphan")
 
 # --------- Tabulka nákupů ---------
@@ -83,14 +84,19 @@ button { padding:8px 12px; border:none; border-radius:66px; background:#6c4298; 
 button:hover { background:#5a3780; }
 a { text-decoration:none; color:#6c4298; }
 .qr-button { margin-top: 10px; }
+.nav-button { float: right; margin-left: 10px; }
+.clear-fix { clear: both; }
 </style>
 </head>
 <body>
-<header>CannaSpace VIP</header>
+<header>CannaSpace VIP
+    <a href="/obsluha" class="nav-button"><button>Rozhraní pro obsluhu</button></a>
+    <a href="/qrcode" class="nav-button"><button>Zobrazit QR kód</button></a>
+</header>
 <div class="logo-container">
 <img srcset="https://cannaspace.s28.cdn-upgates.com/_cache/a/2/a2a6826dd7fd9b73163fdef2a2c557a2-cs-logo-2024.png 1x, https://cannaspace.s28.cdn-upgates.com/_cache/9/f/9ff50bc119e48a50f978fcd4100958bf-cs-logo-2024.png 2x" src="https://cannaspace.s28.cdn-upgates.com/_cache/a/2/a2a6826dd7fd9b73163fdef2a2c557a2-cs-logo-2024.png" width="304" height="77" class="img-fluid-2 img-logo" alt="CannaSpace VIP" title="CannaSpace VIP">
 </div>
-<div class="container">
+<div class="container clear-fix">
 
 <section>
 <h2>Přidat zákazníka (pro personál)</h2>
@@ -100,21 +106,23 @@ a { text-decoration:none; color:#6c4298; }
 <input type="text" name="email" placeholder="Email" required>
 <input type="text" name="telefon" placeholder="Telefon" required>
 <select name="typ_odmeny">
-  <option value="Sleva">Sleva</option>
   <option value="Cashback">Cashback</option>
 </select>
-<input type="number" name="hodnota_odmeny" placeholder="Hodnota %" step="0.1" required>
+<input type="hidden" name="hodnota_odmeny" value="5.0" required>
 <button type="submit">Přidat</button>
 </form>
-<a href="/qrcode"><button class="qr-button">Zobrazit QR kód pro registraci</button></a>
 </section>
 
 <section>
 <h2>Seznam zákazníků</h2>
+<form method="get" action="/">
+    <input type="text" name="q" placeholder="Hledat zákazníka..." value="{{ q or '' }}">
+    <button type="submit">Hledat</button>
+</form>
 <table>
 <tr>
 <th>#</th><th>ID</th><th>Jméno</th><th>Příjmení</th><th>Email</th><th>Telefon</th>
-<th>Typ odměny</th><th>Hodnota %</th><th>Celkové utraceno</th><th>Nasbíraná odměna</th><th>Datum přidání</th><th>Akce</th>
+<th>Celkové utraceno</th><th>Nasbíraná odměna</th><th>Akce</th>
 </tr>
 {% for z in zakaznici %}
 <tr>
@@ -124,11 +132,8 @@ a { text-decoration:none; color:#6c4298; }
 <td>{{ z.prijmeni }}</td>
 <td>{{ z.email }}</td>
 <td>{{ z.telefon }}</td>
-<td>{{ z.typ_odmeny }}</td>
-<td>{{ z.hodnota_odmeny }}</td>
 <td>{{ "{:,.0f}".format(z.celkove_utraceno).replace(",", " ") }} Kč</td>
 <td>{{ "{:,.0f}".format(z.nasbirana_odmena).replace(",", " ") }} Kč</td>
-<td>{{ z.datum_pridani.strftime('%d.%m.%Y') }}</td>
 <td>
 <form method="post" action="/delete/{{ z.id }}" style="display:inline"><button type="submit">Smazat</button></form>
 <form method="get" action="/detail/{{ z.id }}" style="display:inline"><button type="submit">Detail</button></form>
@@ -241,6 +246,45 @@ a { text-decoration:none; color:#6c4298; }
 
 <p><a href="/">Zpět na seznam</a></p>
 </div>
+</body>
+</html>
+"""
+
+OBSLUHA_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rozhraní pro obsluhu - CannaSpace VIP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+    body { font-family: 'Roboto', sans-serif; background:#f5f0f7; color:#333; margin:0; padding:0; text-align:center; }
+    header { background:#6c4298; color:white; padding:20px; font-size:26px; font-weight:700; }
+    .logo-container { text-align: center; padding: 20px 0; }
+    .img-logo { max-width: 150px; height: auto; }
+    .container { width:90%; margin:20px auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+    h1 { color:#6c4298; }
+    input, button { margin: 8px 0; padding: 10px; width: 80%; max-width: 400px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background:#6c4298; color:white; border:none; cursor:pointer; }
+    button:hover { background:#5a3780; }
+    a { color:#6c4298; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <header>Rozhraní pro obsluhu</header>
+    <div class="logo-container">
+    <img srcset="https://cannaspace.s28.cdn-upgates.com/_cache/a/2/a2a6826dd7fd9b73163fdef2a2c557a2-cs-logo-2024.png 1x, https://cannaspace.s28.cdn-upgates.com/_cache/9/f/9ff50bc119e48a50f978fcd4100958bf-cs-logo-2024.png 2x" src="https://cannaspace.s28.cdn-upgates.com/_cache/a/2/a2a6826dd7fd9b73163fdef2a2c557a2-cs-logo-2024.png" width="304" height="77" class="img-fluid-2 img-logo" alt="CannaSpace VIP" title="CannaSpace VIP">
+    </div>
+    <div class="container">
+        <h1>Přidání nákupu</h1>
+        <form action="/add_nakup_obsluha" method="post">
+            <input type="number" name="zakaznik_id" placeholder="ID zákazníka" required>
+            <input type="number" name="castka" placeholder="Částka nákupu" step="0.01" required>
+            <button type="submit">Přidat nákup</button>
+        </form>
+        <p><a href="/">Zpět na přehled</a></p>
+    </div>
 </body>
 </html>
 """
@@ -415,14 +459,27 @@ QR_PAGE_TEMPLATE = """
 </html>
 """
 
-# --------- ROUTES ---------
 @app.route("/")
 def index():
     session = get_db_session()
-    zakaznici = session.query(Zakaznik).all()
+    q = request.args.get('q', '').strip()
+    if q:
+        search_query = f"%{q}%"
+        zakaznici = session.query(Zakaznik).filter(
+            or_(
+                Zakaznik.jmeno.like(search_query),
+                Zakaznik.prijmeni.like(search_query),
+                Zakaznik.email.like(search_query),
+                Zakaznik.telefon.like(search_query)
+            )
+        ).all()
+    else:
+        zakaznici = session.query(Zakaznik).all()
+        
     for z in zakaznici:
         z.nasbirana_odmena = sum(n.odmena for n in z.nakupy)
-    return render_template_string(TEMPLATE, zakaznici=zakaznici)
+        
+    return render_template_string(TEMPLATE, zakaznici=zakaznici, q=q)
 
 @app.route("/add", methods=["POST"])
 def add():
@@ -456,48 +513,36 @@ def detail(id):
     return render_template_string(DETAIL_TEMPLATE, zakaznik=zakaznik)
 
 @app.route("/add_nakup/<int:id>", methods=["POST"])
-def add_nakup(id):
+def add_nakup_detail(id):
     session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
     castka = float(request.form['castka'])
     vyuzita_odmena = float(request.form.get('vyuzita_odmena', 0))
 
-    # Odečteme použitou odměnu z celkové nasbírané odměny
-    if vyuzita_odmena > 0 and vyuzita_odmena <= zakaznik.nasbirana_odmena:
+    if vyuzita_odmena > 0:
         zakaznik.nasbirana_odmena -= vyuzita_odmena
     
-    # Vypočítáme novou odměnu na základě nákupu (pokud to není cashback)
-    odmena = 0
-    if zakaznik.typ_odmeny == 'Cashback':
-        odmena = castka * zakaznik.hodnota_odmeny / 100
-        zakaznik.celkove_utraceno += castka
-    
-    # Přičteme nově získanou odměnu k nasbírané
+    odmena = castka * zakaznik.hodnota_odmeny / 100
+    zakaznik.celkove_utraceno += castka
     zakaznik.nasbirana_odmena += odmena
 
-    n = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena - vyuzita_odmena) # Ukládáme čistý zisk/ztrátu odměny
-    session.add(n)
+    nakup = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena - vyuzita_odmena)
+    session.add(nakup)
     session.commit()
     return redirect(f"/detail/{id}")
 
 @app.route("/add_bonus_odmena/<int:id>", methods=["POST"])
 def add_bonus_odmena(id):
-    """Přidá bonusovou odměnu zákazníkovi a uloží záznam o transakci."""
     session = get_db_session()
     zakaznik = session.query(Zakaznik).get(id)
-    # Získání bonusové částky z formuláře
     bonus_castka = float(request.form['bonus_castka'])
     
-    # Přidání bonusové odměny k celkové nasbírané odměně
     zakaznik.nasbirana_odmena += bonus_castka
     
-    # Vytvoření záznamu o nákupu pro bonus, s částkou 0
-    # To pomáhá udržet historii transakcí
-    n = Nakup(zakaznik=zakaznik, castka=0.0, odmena=bonus_castka)
-    session.add(n)
+    nakup = Nakup(zakaznik=zakaznik, castka=0.0, odmena=bonus_castka)
+    session.add(nakup)
     session.commit()
     
-    # Přesměrování zpět na detail zákazníka
     return redirect(f"/detail/{id}")
 
 @app.route("/edit/<int:id>", methods=["GET"])
@@ -551,9 +596,7 @@ def delete_odmena(nakup_id):
 
 @app.route("/qrcode")
 def show_qrcode():
-    # Použijeme request.host_url, aby URL fungovala i po nasazení na Render
     data = f"{request.host_url}register"
-
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -587,6 +630,33 @@ def register_customer():
         return render_template_string(CONFIRMATION_TEMPLATE)
     else:
         return render_template_string(REGISTER_FORM_TEMPLATE)
+
+@app.route("/obsluha")
+def obsluha():
+    return render_template_string(OBSLUHA_TEMPLATE)
+
+@app.route("/add_nakup_obsluha", methods=["POST"])
+def add_nakup_obsluha():
+    session = get_db_session()
+    try:
+        zakaznik_id = int(request.form['zakaznik_id'])
+        castka = float(request.form['castka'])
+        
+        zakaznik = session.query(Zakaznik).get(zakaznik_id)
+        if zakaznik:
+            odmena = castka * (zakaznik.hodnota_odmeny / 100)
+            
+            nakup = Nakup(zakaznik=zakaznik, castka=castka, odmena=odmena)
+            session.add(nakup)
+            
+            zakaznik.celkove_utraceno += castka
+            zakaznik.nasbirana_odmena += odmena
+            session.commit()
+            return redirect("/obsluha")
+        else:
+            return "Zákazník s daným ID nebyl nalezen."
+    except Exception as e:
+        return f"Chyba při přidávání nákupu: {e}"
 
 if __name__ == "__main__":
     app.run(debug=True)
