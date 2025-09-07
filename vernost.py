@@ -156,6 +156,7 @@ DETAIL_TEMPLATE = """
         input[type="number"] { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         input[type="submit"] { background-color: #5cb85c; color: white; padding: 14px 20px; margin: 8px 0; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
         a { color: #5cb85c; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
