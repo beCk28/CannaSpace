@@ -507,7 +507,8 @@ def delete_odmena(nakup_id):
 
 @app.route("/qrcode")
 def show_qrcode():
-    data = "http://127.0.0.1:5000/register"
+    # Použijeme request.host_url, aby URL fungovala i po nasazení na Render
+    data = f"{request.host_url}register"
 
     qr = qrcode.QRCode(
         version=1,
